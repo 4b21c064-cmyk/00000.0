@@ -1,0 +1,16 @@
+{
+  "short_name": "ZenFlight",
+  "name": "ZenFlight 1S 虛擬遙控器",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/nolan/128/drone.png",
+      "type": "image/png",
+      "sizes": "128x128"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#121212",
+  "theme_color": "#1e1e1e",
+  "display": "standalone",
+  "orientation": "any"
+}

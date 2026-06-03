@@ -133,6 +133,19 @@
             box-shadow: 0 0 10px rgba(255,87,34,0.5);
         }
     </style>
+
+    <link rel="manifest" href="manifest.json">
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(reg => console.log('PWA App 註冊成功！', reg))
+        .catch(err => console.log('註冊失敗：', err));
+    });
+  }
+</script>
+
 </head>
 <body>
 
