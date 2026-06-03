@@ -382,5 +382,32 @@
             }, 50); // 50ms 頻率等同於實體高速航模遙控器的高頻傳輸速率
         }
     </script>
+    <div id="orientation-warning">
+    <div style="text-align: center; padding: 20px;">
+        <span style="font-size: 50px;">🔄</span>
+        <h2 style="margin-top: 15px; font-size: 18px;">請將手機旋轉至【橫標模式】</h2>
+        <p style="color: #888; font-size: 13px; margin-top: 5px;">為了精準盲操 60g 戰機，請解鎖手機自動旋轉並打橫使用</p>
+    </div>
+</div>
+
+<style>
+    /* 預設隱藏遮罩 */
+    #orientation-warning {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background-color: #121212;
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* 🧠 當螢幕是「直向 (Portrait)」時，立刻發動覆蓋遮罩 */
+    @media (orientation: portrait) {
+        #orientation-warning {
+            display: flex;
+        }
+    }
+</style>
 </body>
 </html>
