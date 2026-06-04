@@ -3,168 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🛩️ ZenFlight - 藍牙虛擬遙控器</title>
+    <title> 小四軸 - 藍牙虛擬遙控器</title>
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #121212;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        /* 頂部狀態欄 */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            background: #1e1e1e;
-            border-bottom: 1px solid #333;
-        }
-        .logo {
-            font-size: 18px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-        .btn-connect {
-            background-color: #00adb5;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
-        .btn-connect.connected {
-            background-color: #ff2e63;
-        }
-        /* 儀表數據面板 */
-        .telemetry {
-            display: flex;
-            justify-content: space-around;
-            background: #181818;
-            padding: 10px 0;
-            font-size: 13px;
-            border-bottom: 1px solid #222;
-        }
-        .data-box span {
-            color: #00adb5;
-            font-weight: bold;
-        }
-        /* 搖桿核心操作區 */
-        .control-container {
-            flex: 1;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 20px;
-            position: relative;
-        }
-        .joystick-zone {
-            width: 160px;
-            height: 160px;
-            background: radial-gradient(circle, #252525 0%, #1a1a1a 100%);
-            border: 2px solid #444;
-            border-radius: 50%;
-            position: relative;
-            touch-action: none;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
-        }
-        .stick {
-            width: 55px;
-            height: 55px;
-            background: linear-gradient(145deg, #333333, #222222);
-            border: 2px solid #00adb5;
-            border-radius: 50%;
-            position: absolute;
-            cursor: pointer;
-            box-shadow: 0 5px 10px rgba(0,0,0,0.4);
-            transition: transform 0.05s linear;
-        }
-        .joystick-label {
-            position: absolute;
-            bottom: -25px;
-            font-size: 12px;
-            color: #888;
-            text-align: center;
-            width: 100%;
-        }
-        /* 底部安全開關 */
-        footer {
-            padding: 15px;
-            background: #1e1e1e;
-            display: flex;
-            justify-content: center;
-            border-top: 1px solid #333;
-        }
-        .btn-arm {
-            width: 80%;
-            max-width: 300px;
-            background-color: #333;
-            color: #888;
-            border: 2px solid #444;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            cursor: pointer;
-            text-align: center;
-        }
-        .btn-arm.ready {
-            background-color: #ff5722;
-            color: white;
-            border-color: #ff5722;
-            box-shadow: 0 0 10px rgba(255,87,34,0.5);
-        }
-        /* 橫螢幕強制遮罩樣式 */
-        #orientation-warning {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: #121212;
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-        }
-        @media (orientation: portrait) {
-            #orientation-warning {
-                display: flex;
-            }
-        }
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        body { margin: 0; padding: 0; width: 100vw; height: 100vh; background-color: #121212; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; display: flex; flex-direction: column; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #1e1e1e; border-bottom: 1px solid #333; }
+        .logo { font-size: 18px; font-weight: bold; letter-spacing: 1px; }
+        .btn-connect { background-color: #00adb5; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .btn-connect.connected { background-color: #ff2e63; }
+        .telemetry { display: flex; justify-content: space-around; background: #181818; padding: 10px 0; font-size: 13px; border-bottom: 1px solid #222; }
+        .data-box span { color: #00adb5; font-weight: bold; }
+        .control-container { flex: 1; display: flex; justify-content: space-around; align-items: center; padding: 20px; position: relative; }
+        .joystick-zone { width: 160px; height: 160px; background: radial-gradient(circle, #252525 0%, #1a1a1a 100%); border: 2px solid #444; border-radius: 50%; position: relative; touch-action: none; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
+        .stick { width: 55px; height: 55px; background: linear-gradient(145deg, #333333, #222222); border: 2px solid #00adb5; border-radius: 50%; position: absolute; cursor: pointer; box-shadow: 0 5px 10px rgba(0,0,0,0.4); transition: transform 0.05s linear; }
+        .joystick-label { position: absolute; bottom: -25px; font-size: 12px; color: #888; text-align: center; width: 100%; }
+        footer { padding: 15px; background: #1e1e1e; display: flex; justify-content: center; border-top: 1px solid #333; }
+        .btn-arm { width: 80%; max-width: 300px; background-color: #333; color: #888; border: 2px solid #444; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; letter-spacing: 2px; cursor: pointer; text-align: center; }
+        .btn-arm.ready { background-color: #ff5722; color: white; border-color: #ff5722; box-shadow: 0 0 10px rgba(255,87,34,0.5); }
+        #orientation-warning { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #121212; z-index: 9999; justify-content: center; align-items: center; }
+        @media (orientation: portrait) { #orientation-warning { display: flex; } }
     </style>
-
     <link rel="manifest" href="manifest.json">
-
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('service-worker.js')
-            .then(reg => console.log('PWA App 註冊成功！', reg))
-            .catch(err => console.log('註冊失敗：', err));
+          navigator.serviceWorker.register('service-worker.js').catch(err => console.log('SW註冊失敗：', err));
         });
       }
     </script>
 </head>
 <body>
-
     <header>
-        <div class="logo">🚀 ZenFlight 1S</div>
+        <div class="logo"> 小四軸</div>
         <button id="connectBtn" class="btn-connect">連接藍牙</button>
     </header>
 
@@ -180,7 +50,6 @@
             <div id="leftStick" class="stick"></div>
             <div class="joystick-label">左手：油門 / 航向</div>
         </div>
-
         <div id="rightZone" class="joystick-zone">
             <div id="rightStick" class="stick"></div>
             <div class="joystick-label">右手：俯仰 / 翻滾</div>
@@ -200,142 +69,65 @@
     </div>
 
     <script>
-        let bluetoothDevice = null;
-        let txCharacteristic = null;
-        let isConnected = false;
-        let isArmed = false;
-        let transmissionIntervalId = null;
-
-        // 遙控核心控制變數 (標準航模四通道：1000 ~ 2000 訊號範圍)
+        let bluetoothDevice = null; let txCharacteristic = null; let isConnected = false; let isArmed = false; let transmissionIntervalId = null;
         let channels = { throttle: 1000, yaw: 1500, pitch: 1500, roll: 1500 };
 
-        // DOM 元素
-        const connectBtn = document.getElementById('connectBtn');
-        const armBtn = document.getElementById('armBtn');
-        const leftStick = document.getElementById('leftStick');
-        const rightStick = document.getElementById('rightStick');
-
-        // Web Bluetooth API 服務 UUID (HC-05/06 預設常見的 Serial Port 服務)
+        const connectBtn = document.getElementById('connectBtn'); const armBtn = document.getElementById('armBtn');
+        const leftStick = document.getElementById('leftStick'); const rightStick = document.getElementById('rightStick');
         const UUID_SERVICE = "00001101-0000-1000-8000-00805f9b34fb"; 
 
-        // --- 藍牙連接邏輯 ---
         connectBtn.addEventListener('click', async () => {
-            if (isConnected) {
-                disconnectBluetooth();
-                return;
-            }
+            if (isConnected) { disconnectBluetooth(); return; }
             try {
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'HC' }, { namePrefix: 'ZenFlight' }],
                     optionalServices: [UUID_SERVICE]
                 });
-                
                 const server = await bluetoothDevice.gatt.connect();
                 const service = await server.getPrimaryService(UUID_SERVICE);
-                
-                // 獲取發送特徵值
                 const characteristics = await service.getCharacteristics();
                 txCharacteristic = characteristics[0]; 
-
-                isConnected = true;
-                connectBtn.textContent = "斷開連接";
-                connectBtn.classList.add('connected');
-                armBtn.disabled = false;
-                armBtn.textContent = "解鎖馬達 (ARM)";
-                armBtn.classList.add('ready');
-                
-                // 開啟定時發送循環
+                isConnected = true; connectBtn.textContent = "斷開連接"; connectBtn.classList.add('connected');
+                armBtn.disabled = false; armBtn.textContent = "解鎖馬達 (ARM)"; armBtn.classList.add('ready');
                 startTransmissionLoop();
-            } catch (error) {
-                console.error("藍牙連接失敗:", error);
-                alert("未選擇裝置或瀏覽器不支援 Web Bluetooth");
-            }
+            } catch (error) { alert("未選擇裝置或瀏覽器不支援 Web Bluetooth"); }
         });
 
         function disconnectBluetooth() {
-            if (transmissionIntervalId) {
-                clearInterval(transmissionIntervalId);
-                transmissionIntervalId = null;
-            }
-            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
-                bluetoothDevice.gatt.disconnect();
-            }
-            isConnected = false;
-            isArmed = false;
-            connectBtn.textContent = "連接藍牙";
-            connectBtn.classList.remove('connected');
-            armBtn.disabled = true;
-            armBtn.classList.remove('ready');
-            armBtn.style.backgroundColor = "#333";
-            armBtn.textContent = "請先連接藍牙";
+            if (transmissionIntervalId) { clearInterval(transmissionIntervalId); transmissionIntervalId = null; }
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) { bluetoothDevice.gatt.disconnect(); }
+            isConnected = false; isArmed = false; connectBtn.textContent = "連接藍牙"; connectBtn.classList.remove('connected');
+            armBtn.disabled = true; armBtn.classList.remove('ready'); armBtn.style.backgroundColor = "#333"; armBtn.textContent = "請先連接藍牙";
             resetSticks();
         }
 
-        // --- 解鎖開關安全邏輯 ---
         armBtn.addEventListener('click', () => {
             if (!isConnected) return;
             isArmed = !isArmed;
-            if (isArmed) {
-                armBtn.textContent = "❗ 鎖定馬達 (DISARM)";
-                armBtn.style.backgroundColor = "#ff2e63";
-            } else {
-                armBtn.textContent = "解鎖馬達 (ARM)";
-                armBtn.style.backgroundColor = "#ff5722";
-                resetSticks();
-            }
+            if (isArmed) { armBtn.textContent = "❗ 鎖定馬達 (DISARM)"; armBtn.style.backgroundColor = "#ff2e63"; }
+            else { armBtn.textContent = "解鎖馬達 (ARM)"; armBtn.style.backgroundColor = "#ff5722"; resetSticks(); }
         });
 
-        // --- 搖桿實體 UI 與觸控動態演算 ---
         function setupJoystick(zoneId, stickId, isLeftZone) {
-            const zone = document.getElementById(zoneId);
-            const stick = document.getElementById(stickId);
-            const maxRadius = 52; // 搖桿最大物理邊界 ((160-55)/2 )
-            
-            // 初始幾何中心點定位
-            const centerX = 52;
-            const centerY = isLeftZone ? 104 : 52; // 左搖桿油門預設在最低點 (104px)，右搖桿在正中心 (52px)
-            
-            stick.style.left = centerX + 'px';
-            stick.style.top = centerY + 'px';
+            const zone = document.getElementById(zoneId); const stick = document.getElementById(stickId); const maxRadius = 52;
+            const centerX = 52; const centerY = isLeftZone ? 104 : 52;
+            stick.style.left = centerX + 'px'; stick.style.top = centerY + 'px';
 
             function handleMove(e) {
-                e.preventDefault();
-                if (!isConnected) return;
-                
-                const touch = e.touches[0];
-                const rect = zone.getBoundingClientRect();
-                
-                // 計算相對於搖桿中心的物理座標偏移
-                let deltaX = touch.clientX - rect.left - 80;
-                let deltaY = touch.clientY - rect.top - 80;
-                
-                // 限制圓形邊界
+                e.preventDefault(); if (!isConnected) return;
+                const touch = e.touches[0]; const rect = zone.getBoundingClientRect();
+                let deltaX = touch.clientX - rect.left - 80; let deltaY = touch.clientY - rect.top - 80;
                 const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-                if (distance > maxRadius) {
-                    deltaX = (deltaX / distance) * maxRadius;
-                    deltaY = (deltaY / distance) * maxRadius;
-                }
+                if (distance > maxRadius) { deltaX = (deltaX / distance) * maxRadius; deltaY = (deltaY / distance) * maxRadius; }
                 
-                // 更新實體 UI 圓鈕位置
-                // 注意：左搖桿油門不自動彈回，故在移動時基於物理中心計算位置
-                if (isLeftZone) {
-                    stick.style.left = (52 + deltaX) + 'px';
-                    stick.style.top = (52 + deltaY) + 'px';
-                } else {
-                    stick.style.left = (centerX + deltaX) + 'px';
-                    stick.style.top = (centerY + deltaY) + 'px';
-                }
+                if (isLeftZone) { stick.style.left = (52 + deltaX) + 'px'; stick.style.top = (52 + deltaY) + 'px'; }
+                else { stick.style.left = (centerX + deltaX) + 'px'; stick.style.top = (centerY + deltaY) + 'px'; }
                 
-                // 將幾何座標等比例精準轉化為航模經典訊號範圍 (1000 ~ 2000)
                 if (isLeftZone) {
-                    // 左手航向：X軸 = Yaw (1000~2000)
                     channels.yaw = Math.round(1500 + (deltaX / maxRadius) * 500);
-                    // 【重大修正】左手油門：Y軸 = Throttle (1000~2000) 
-                    // 向上推 deltaY 為負，油門變大接近 2000；向下推 deltaY 為正，油門縮小接近 1000
                     channels.throttle = Math.round(1500 - (deltaY / maxRadius) * 500);
                     channels.throttle = Math.max(1000, Math.min(2000, channels.throttle));
                 } else {
-                    // 右手：X軸 = Roll (1000~2000), Y軸 = Pitch (1000~2000, 向上前進)
                     channels.roll = Math.round(1500 + (deltaX / maxRadius) * 500);
                     channels.pitch = Math.round(1500 - (deltaY / maxRadius) * 500); 
                 }
@@ -343,72 +135,38 @@
             }
 
             function handleEnd() {
-                // 手指釋放時的回彈與維持機制
-                if (isLeftZone) {
-                    // 左手航向（Yaw）瞬間回正 (1500)，但油門（Throttle）死死鎖定目前高度，絕不彈回！
-                    channels.yaw = 1500;
-                    stick.style.left = centerX + 'px';
-                    // 保持 UI 圓鈕在目前的油門高度高度上，不發生視覺混亂
-                } else {
-                    // 右手俯仰與翻滾完全彈回幾何中心點 (1500)
-                    channels.pitch = 1500;
-                    channels.roll = 1500;
-                    stick.style.left = centerX + 'px';
-                    stick.style.top = centerY + 'px';
-                }
+                if (isLeftZone) { channels.yaw = 1500; stick.style.left = centerX + 'px'; }
+                else { channels.pitch = 1500; channels.roll = 1500; stick.style.left = centerX + 'px'; stick.style.top = centerY + 'px'; }
                 updateUI();
             }
-
-            zone.addEventListener('touchstart', handleMove);
-            zone.addEventListener('touchmove', handleMove);
-            zone.addEventListener('touchend', handleEnd);
+            zone.addEventListener('touchstart', handleMove); zone.addEventListener('touchmove', handleMove); zone.addEventListener('touchend', handleEnd);
         }
 
-        setupJoystick('leftZone', 'leftStick', true);
-        setupJoystick('rightZone', 'rightStick', false);
+        setupJoystick('leftZone', 'leftStick', true); setupJoystick('rightZone', 'rightStick', false);
 
         function resetSticks() {
             channels = { throttle: 1000, yaw: 1500, pitch: 1500, roll: 1500 };
-            leftStick.style.left = '52px'; leftStick.style.top = '104px';
-            rightStick.style.left = '52px'; rightStick.style.top = '52px';
+            leftStick.style.left = '52px'; leftStick.style.top = '104px'; rightStick.style.left = '52px'; rightStick.style.top = '52px';
             updateUI();
         }
 
         function updateUI() {
             document.getElementById('valT').textContent = Math.round((channels.throttle - 1000) / 10);
-            document.getElementById('valY').textContent = channels.yaw;
-            document.getElementById('valP').textContent = channels.pitch;
-            document.getElementById('valR').textContent = channels.roll;
+            document.getElementById('valY').textContent = channels.yaw; document.getElementById('valP').textContent = channels.pitch; document.getElementById('valR').textContent = channels.roll;
         }
 
-        // --- 核心高性能低延遲通訊循環（類比優化版） ---
         function startTransmissionLoop() {
             transmissionIntervalId = setInterval(async () => {
                 if (!isConnected || !txCharacteristic) return;
-
-                // 【高級緊湊通訊協議】將 1000~2000 的連續類比數值等比例壓縮至 0~250 區間
-                // 1個字節完美承載細膩的油門與方向微雕，且絕不擠爆 8位元 Arduino Nano 的 Serial 快取
                 const tByte = Math.min(250, Math.max(0, Math.round((channels.throttle - 1000) / 4)));
                 const yByte = Math.min(250, Math.max(0, Math.round((channels.yaw - 1000) / 4)));
                 const pByte = Math.min(250, Math.max(0, Math.round((channels.pitch - 1000) / 4)));
                 const rByte = Math.min(250, Math.max(0, Math.round((channels.roll - 1000) / 4)));
-                
-                // 狀態位元組：最高位元（Bit 7）代表是否解鎖 (ARM)
                 const statusByte = isArmed ? 0x80 : 0x00;
-
-                // 簡易同位檢查碼 (Checksum) 確保無線通訊在空中跳頻時數據不發瘋
                 const checksum = (0xFE ^ tByte ^ yByte ^ pByte ^ rByte ^ statusByte) & 0xFF;
-                
-                // 封裝 6 字節的高性能串列數據包
                 const buffer = new Uint8Array([0xFE, tByte, yByte, pByte, rByte, statusByte, checksum]);
-
-                try {
-                    // 使用無回應寫入（Write Without Response），解鎖極速操控體驗
-                    await txCharacteristic.writeValueWithoutResponse(buffer);
-                } catch (e) {
-                    console.log("訊號跳頻漏失，忽略並繼續下個循環:", e);
-                }
-            }, 50); // 每 50ms 發送一次，高頻響應對齊 MultiWii 微控制器接收地基
+                try { await txCharacteristic.writeValueWithoutResponse(buffer); } catch (e) {}
+            }, 50);
         }
     </script>
 </body>
