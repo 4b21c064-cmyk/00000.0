@@ -132,20 +132,34 @@
             border-color: #ff5722;
             box-shadow: 0 0 10px rgba(255,87,34,0.5);
         }
+        /* 橫螢幕強制遮罩樣式 */
+        #orientation-warning {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #121212;
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        @media (orientation: portrait) {
+            #orientation-warning {
+                display: flex;
+            }
+        }
     </style>
 
     <link rel="manifest" href="manifest.json">
 
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(reg => console.log('PWA App 註冊成功！', reg))
-        .catch(err => console.log('註冊失敗：', err));
-    });
-  }
-</script>
-
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('service-worker.js')
+            .then(reg => console.log('PWA App 註冊成功！', reg))
+            .catch(err => console.log('註冊失敗：', err));
+        });
+      }
+    </script>
 </head>
 <body>
 
@@ -163,12 +177,12 @@
 
     <main class="control-container">
         <div id="leftZone" class="joystick-zone">
-            <div id="leftStick" class="stick" style="left: 50px; top: 100px;"></div>
+            <div id="leftStick" class="stick"></div>
             <div class="joystick-label">左手：油門 / 航向</div>
         </div>
 
         <div id="rightZone" class="joystick-zone">
-            <div id="rightStick" class="stick" style="left: 50px; top: 50px;"></div>
+            <div id="rightStick" class="stick"></div>
             <div class="joystick-label">右手：俯仰 / 翻滾</div>
         </div>
     </main>
@@ -177,16 +191,20 @@
         <button id="armBtn" class="btn-arm" disabled>請先連接藍牙</button>
     </footer>
 
+    <div id="orientation-warning">
+        <div style="text-align: center; padding: 20px;">
+            <span style="font-size: 50px;">🔄</span>
+            <h2 style="margin-top: 15px; font-size: 18px;">請將手機旋轉至【橫螢幕模式】</h2>
+            <p style="color: #888; font-size: 13px; margin-top: 5px;">為了精準盲操戰機，請解鎖手機自動旋轉並打橫使用</p>
+        </div>
+    </div>
+
     <script>
-        // --- 藍牙通訊協議定義 ---
-        // 為了不讓 8 萬次數據塞爆 8位元 Arduino Nano 的 Serial 緩衝區，
-        // 我們採用極簡的「4字節二進位緊湊封包」：[0xFF, 油門, 航向/俯仰/翻滾混合, 驗證碼]
-        // 這裡網頁每 50 毫秒發送一次標準化數據
-        
         let bluetoothDevice = null;
         let txCharacteristic = null;
         let isConnected = false;
         let isArmed = false;
+        let transmissionIntervalId = null;
 
         // 遙控核心控制變數 (標準航模四通道：1000 ~ 2000 訊號範圍)
         let channels = { throttle: 1000, yaw: 1500, pitch: 1500, roll: 1500 };
@@ -217,7 +235,7 @@
                 
                 // 獲取發送特徵值
                 const characteristics = await service.getCharacteristics();
-                txCharacteristic = characteristics[0]; // 通常第一個就是 TX
+                txCharacteristic = characteristics[0]; 
 
                 isConnected = true;
                 connectBtn.textContent = "斷開連接";
@@ -226,7 +244,7 @@
                 armBtn.textContent = "解鎖馬達 (ARM)";
                 armBtn.classList.add('ready');
                 
-                // 開啟定時發送循環 (每 50 毫秒發送一次，對齊 MultiWii 的接收頻率)
+                // 開啟定時發送循環
                 startTransmissionLoop();
             } catch (error) {
                 console.error("藍牙連接失敗:", error);
@@ -235,6 +253,10 @@
         });
 
         function disconnectBluetooth() {
+            if (transmissionIntervalId) {
+                clearInterval(transmissionIntervalId);
+                transmissionIntervalId = null;
+            }
             if (bluetoothDevice && bluetoothDevice.gatt.connected) {
                 bluetoothDevice.gatt.disconnect();
             }
@@ -244,6 +266,7 @@
             connectBtn.classList.remove('connected');
             armBtn.disabled = true;
             armBtn.classList.remove('ready');
+            armBtn.style.backgroundColor = "#333";
             armBtn.textContent = "請先連接藍牙";
             resetSticks();
         }
@@ -268,9 +291,9 @@
             const stick = document.getElementById(stickId);
             const maxRadius = 52; // 搖桿最大物理邊界 ((160-55)/2 )
             
-            // 初始定位
+            // 初始幾何中心點定位
             const centerX = 52;
-            const centerY = isLeftZone ? 100 : 52; // 左搖桿油門預設在最低點 (100px)，右搖桿在正中心 (52px)
+            const centerY = isLeftZone ? 104 : 52; // 左搖桿油門預設在最低點 (104px)，右搖桿在正中心 (52px)
             
             stick.style.left = centerX + 'px';
             stick.style.top = centerY + 'px';
@@ -293,16 +316,24 @@
                     deltaY = (deltaY / distance) * maxRadius;
                 }
                 
-                stick.style.left = (centerX + deltaX) + 'px';
-                stick.style.top = (centerY + deltaY) + 'px';
-                
-                // 將物理座標等比例轉化為 MultiWii 經典數值範圍 (1000 ~ 2000)
+                // 更新實體 UI 圓鈕位置
+                // 注意：左搖桿油門不自動彈回，故在移動時基於物理中心計算位置
                 if (isLeftZone) {
-                    // 左手：X軸 = Yaw (1000~2000), Y軸 = Throttle (1000~2000, 向上變大)
+                    stick.style.left = (52 + deltaX) + 'px';
+                    stick.style.top = (52 + deltaY) + 'px';
+                } else {
+                    stick.style.left = (centerX + deltaX) + 'px';
+                    stick.style.top = (centerY + deltaY) + 'px';
+                }
+                
+                // 將幾何座標等比例精準轉化為航模經典訊號範圍 (1000 ~ 2000)
+                if (isLeftZone) {
+                    // 左手航向：X軸 = Yaw (1000~2000)
                     channels.yaw = Math.round(1500 + (deltaX / maxRadius) * 500);
-                    // 油門在最底點時 deltaY = 48，最高點時 deltaY = -52
-                    const normalizedY = (centerY + deltaY - 100) / 104; // 範圍 -1 ~ 0
-                    channels.throttle = Math.round(1000 + Math.abs(normalizedY) * 1000);
+                    // 【重大修正】左手油門：Y軸 = Throttle (1000~2000) 
+                    // 向上推 deltaY 為負，油門變大接近 2000；向下推 deltaY 為正，油門縮小接近 1000
+                    channels.throttle = Math.round(1500 - (deltaY / maxRadius) * 500);
+                    channels.throttle = Math.max(1000, Math.min(2000, channels.throttle));
                 } else {
                     // 右手：X軸 = Roll (1000~2000), Y軸 = Pitch (1000~2000, 向上前進)
                     channels.roll = Math.round(1500 + (deltaX / maxRadius) * 500);
@@ -312,13 +343,14 @@
             }
 
             function handleEnd() {
-                // 釋放手指時的物理公差彈回機制
+                // 手指釋放時的回彈與維持機制
                 if (isLeftZone) {
-                    // 左手方向回正，但油門死死保持在目前高度，絕對不能自動彈回中央（否則飛機會直接摔機！）
+                    // 左手航向（Yaw）瞬間回正 (1500)，但油門（Throttle）死死鎖定目前高度，絕不彈回！
                     channels.yaw = 1500;
                     stick.style.left = centerX + 'px';
+                    // 保持 UI 圓鈕在目前的油門高度高度上，不發生視覺混亂
                 } else {
-                    // 右手俯仰、翻滾完全彈回正中央 (1500)
+                    // 右手俯仰與翻滾完全彈回幾何中心點 (1500)
                     channels.pitch = 1500;
                     channels.roll = 1500;
                     stick.style.left = centerX + 'px';
@@ -337,7 +369,7 @@
 
         function resetSticks() {
             channels = { throttle: 1000, yaw: 1500, pitch: 1500, roll: 1500 };
-            leftStick.style.left = '52px'; leftStick.style.top = '100px';
+            leftStick.style.left = '52px'; leftStick.style.top = '104px';
             rightStick.style.left = '52px'; rightStick.style.top = '52px';
             updateUI();
         }
@@ -349,65 +381,35 @@
             document.getElementById('valR').textContent = channels.roll;
         }
 
-        // --- 核心高性能低延遲通訊循環 ---
+        // --- 核心高性能低延遲通訊循環（類比優化版） ---
         function startTransmissionLoop() {
-            setInterval(async () => {
+            transmissionIntervalId = setInterval(async () => {
                 if (!isConnected || !txCharacteristic) return;
 
-                // 為了防呆與高速通訊，網頁將數據高度壓縮為 4 個 Byte 的不對稱封包：
-                // Byte 0: 0xFE (封包起始標頭)
-                // Byte 1: 油門映射 (1000~2000 轉為 0~250)
-                // Byte 2: 混合控制數據位元 (包含 ARM 狀態與方向控制的狀態壓縮)
-                // Byte 3: Checksum 簡易同位檢查碼
-
+                // 【高級緊湊通訊協議】將 1000~2000 的連續類比數值等比例壓縮至 0~250 區間
+                // 1個字節完美承載細膩的油門與方向微雕，且絕不擠爆 8位元 Arduino Nano 的 Serial 快取
                 const tByte = Math.min(250, Math.max(0, Math.round((channels.throttle - 1000) / 4)));
+                const yByte = Math.min(250, Math.max(0, Math.round((channels.yaw - 1000) / 4)));
+                const pByte = Math.min(250, Math.max(0, Math.round((channels.pitch - 1000) / 4)));
+                const rByte = Math.min(250, Math.max(0, Math.round((channels.roll - 1000) / 4)));
                 
-                // 狀態位元組：第 7 位元代表是否解鎖 (ARM)
-                let statusByte = isArmed ? 0x80 : 0x00;
-                // 將 Pitch/Roll 的偏離狀況簡易壓縮進剩下位元，供 Arduino 快速解析
-                if(channels.pitch > 1600) statusByte |= 0x01; // 前進
-                if(channels.pitch < 1400) statusByte |= 0x02; // 後退
-                if(channels.roll > 1600)  statusByte |= 0x04; // 右翻
-                if(channels.roll < 1400)  statusByte |= 0x08; // 左翻
+                // 狀態位元組：最高位元（Bit 7）代表是否解鎖 (ARM)
+                const statusByte = isArmed ? 0x80 : 0x00;
 
-                const checksum = (0xFE ^ tByte ^ statusByte) & 0xFF;
-                const buffer = new Uint8Array([0xFE, tByte, statusByte, checksum]);
+                // 簡易同位檢查碼 (Checksum) 確保無線通訊在空中跳頻時數據不發瘋
+                const checksum = (0xFE ^ tByte ^ yByte ^ pByte ^ rByte ^ statusByte) & 0xFF;
+                
+                // 封裝 6 字節的高性能串列數據包
+                const buffer = new Uint8Array([0xFE, tByte, yByte, pByte, rByte, statusByte, checksum]);
 
                 try {
-                    // 使用無回應寫入（Write Without Response），解鎖 60g 戰機極速即時操控，完全零遲滯！
+                    // 使用無回應寫入（Write Without Response），解鎖極速操控體驗
                     await txCharacteristic.writeValueWithoutResponse(buffer);
                 } catch (e) {
-                    console.log("訊號突波封包漏失，忽略繼續:", e);
+                    console.log("訊號跳頻漏失，忽略並繼續下個循環:", e);
                 }
-            }, 50); // 50ms 頻率等同於實體高速航模遙控器的高頻傳輸速率
+            }, 50); // 每 50ms 發送一次，高頻響應對齊 MultiWii 微控制器接收地基
         }
     </script>
-    <div id="orientation-warning">
-    <div style="text-align: center; padding: 20px;">
-        <span style="font-size: 50px;">🔄</span>
-        <h2 style="margin-top: 15px; font-size: 18px;">請將手機旋轉至【橫標模式】</h2>
-        <p style="color: #888; font-size: 13px; margin-top: 5px;">為了精準盲操 60g 戰機，請解鎖手機自動旋轉並打橫使用</p>
-    </div>
-</div>
-
-<style>
-    /* 預設隱藏遮罩 */
-    #orientation-warning {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
-        background-color: #121212;
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-    }
-
-    /* 🧠 當螢幕是「直向 (Portrait)」時，立刻發動覆蓋遮罩 */
-    @media (orientation: portrait) {
-        #orientation-warning {
-            display: flex;
-        }
-    }
-</style>
 </body>
 </html>
