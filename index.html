@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title> 小四軸 - 藍牙虛擬遙控器</title>
+    <title>小四軸 - 藍牙虛擬遙控器</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         body { margin: 0; padding: 0; width: 100vw; height: 100vh; background-color: #121212; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; display: flex; flex-direction: column; }
@@ -34,7 +34,7 @@
 </head>
 <body>
     <header>
-        <div class="logo"> 小四軸</div>
+        <div class="logo">小四軸</div>
         <button id="connectBtn" class="btn-connect">連接藍牙</button>
     </header>
 
@@ -74,23 +74,33 @@
 
         const connectBtn = document.getElementById('connectBtn'); const armBtn = document.getElementById('armBtn');
         const leftStick = document.getElementById('leftStick'); const rightStick = document.getElementById('rightStick');
-        const UUID_SERVICE = "00001101-0000-1000-8000-00805f9b34fb"; 
+        
+        // 🛠️ 【核心修改】更換為通用 BLE 模組（JDY-33 / CC2541）的標準透傳 FFE0 服務 UUID
+        const UUID_SERVICE = "0000ffe0-0000-1000-8000-00805f9b34fb";
+        const UUID_CHARACTERISTIC = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
         connectBtn.addEventListener('click', async () => {
             if (isConnected) { disconnectBluetooth(); return; }
             try {
+                // 改用 acceptAllDevices 擴大廣播捕捉範圍，並允許加載自定義 BLE 服務
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'HC' }, { namePrefix: 'ZenFlight' }],
+                    acceptAllDevices: true,
                     optionalServices: [UUID_SERVICE]
                 });
+                
                 const server = await bluetoothDevice.gatt.connect();
                 const service = await server.getPrimaryService(UUID_SERVICE);
-                const characteristics = await service.getCharacteristics();
-                txCharacteristic = characteristics[0]; 
+                
+                // 🛠️ 【核心修改】精確抓取負責發射 0xFE 數據流的 ffe1 訊號水龍頭通道
+                txCharacteristic = await service.getCharacteristic(UUID_CHARACTERISTIC); 
+                
                 isConnected = true; connectBtn.textContent = "斷開連接"; connectBtn.classList.add('connected');
                 armBtn.disabled = false; armBtn.textContent = "解鎖馬達 (ARM)"; armBtn.classList.add('ready');
                 startTransmissionLoop();
-            } catch (error) { alert("未選擇裝置或瀏覽器不支援 Web Bluetooth"); }
+            } catch (error) { 
+                console.error(error);
+                alert("藍牙配對失敗：請確認藍牙模組是否開機，且必須使用 Google Chrome 瀏覽器！"); 
+            }
         });
 
         function disconnectBluetooth() {
@@ -165,8 +175,11 @@
                 const statusByte = isArmed ? 0x80 : 0x00;
                 const checksum = (0xFE ^ tByte ^ yByte ^ pByte ^ rByte ^ statusByte) & 0xFF;
                 const buffer = new Uint8Array([0xFE, tByte, yByte, pByte, rByte, statusByte, checksum]);
-                try { await txCharacteristic.writeValueWithoutResponse(buffer); } catch (e) {}
-            }, 50);
+                try { 
+                    // 🛠️ 【核心修改】改用符合 Web 藍牙底層高頻吞吐的低延遲無感應答發射函式
+                    await txCharacteristic.writeValueWithoutResponse(buffer); 
+                } catch (e) { console.error("發送失敗:", e); }
+            }, 50); // 每 50ms (20Hz) 的神經數據回報率
         }
     </script>
 </body>
