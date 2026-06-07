@@ -69,6 +69,12 @@
     </div>
 
 <script>
+        
+    // 🛠️ 1. 在最頂端宣告 Web Serial 專用的全域控制變數
+        let serialPort = null;
+        let writer = null;
+
+        // 原本的變數完好無損地保留
         let bluetoothDevice = null; let txCharacteristic = null; let isConnected = false; let isArmed = false; let transmissionIntervalId = null;
         let channels = { throttle: 1000, yaw: 1500, pitch: 1500, roll: 1500 };
 
@@ -79,34 +85,43 @@
         const UUID_SERVICE = "0000ffe0-0000-1000-8000-00805f9b34fb";
         const UUID_CHARACTERISTIC = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
-       connectBtn.addEventListener('click', async () => {
+      // 🛠️ 2. 完全取代原本的藍牙連線，改走 Chrome 官方合法放行的 Web Serial 串口流
+        connectBtn.addEventListener('click', async () => {
             if (isConnected) { disconnectBluetooth(); return; }
             try {
-                // 🛠️ 【終極微創手術】廢除在 filters 內組合 services 與 name 的死鎖限制
-                // 改用 acceptAllDevices 徹底打開權限，強迫瀏覽器無條件彈出搜尋清單！
-                bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [UUID_SERVICE] // 必須在這裡宣告 FFE0，否則後續會無法獲取服務
-                });
+                console.log("正在請求電腦實體或虛擬 COM 埠權限...");
+                // 網頁法律無條件放行！Chrome 瀏覽器會在左上角啪一聲跳出「COM 埠選擇清單」
+                serialPort = await navigator.serial.requestPort();
                 
-                console.log("硬體握手成功，正在建立 GATT 隧道...");
-                const server = await bluetoothDevice.gatt.connect();
-                const service = await server.getPrimaryService(UUID_SERVICE);
-                txCharacteristic = await service.getCharacteristic(UUID_CHARACTERISTIC); 
+                // 死死對齊這顆經典藍牙 HC-05 被妳在 AT 模式洗腦後的 115200 狂暴時脈！
+                await serialPort.open({ baudRate: 115200 }); 
                 
-                isConnected = true; connectBtn.textContent = "斷開連接"; connectBtn.classList.add('connected');
-                armBtn.disabled = false; armBtn.textContent = "解鎖馬達 (ARM)"; armBtn.classList.add('ready');
+                // 獲取寫入串流鎖定（水龍頭開關）
+                writer = serialPort.writable.getWriter();
+                
+                // 界面 Usability 狀態同步更新
+                isConnected = true; 
+                connectBtn.textContent = "COM 埠已接通"; 
+                connectBtn.classList.add('connected');
+                armBtn.disabled = false; 
+                armBtn.textContent = "解鎖馬達 (ARM)"; 
+                armBtn.classList.add('ready');
+                
+                // 開啟每 50ms (20Hz) 的神經數據定時噴射迴圈！
                 startTransmissionLoop();
             } catch (error) { 
-                // 🛠️ 錯誤優化：萬一還是進到 catch，它會把瀏覽器拒絕的真實原因直接彈出來
                 console.error(error);
-                alert("瀏覽器核心回報錯誤: " + error.message + "\n\n請確認手機藍牙已開啟、未被其他 App 佔用，且使用 Google Chrome 瀏覽器！"); 
+                alert("串口連接失敗，原因: " + error.message); 
             }
         });
 
         function disconnectBluetooth() {
             if (transmissionIntervalId) { clearInterval(transmissionIntervalId); transmissionIntervalId = null; }
-            if (bluetoothDevice && bluetoothDevice.gatt.connected) { bluetoothDevice.gatt.disconnect(); }
+            
+            // 🛠️ 3. 改為關閉 Serial 流與釋放鎖定
+            if (writer) { writer.releaseLock(); writer = null; }
+            if (serialPort) { serialPort.close(); serialPort = null; }
+            
             isConnected = false; isArmed = false; connectBtn.textContent = "連接藍牙"; connectBtn.classList.remove('connected');
             armBtn.disabled = true; armBtn.classList.remove('ready'); armBtn.style.backgroundColor = "#333"; armBtn.textContent = "請先連接藍牙";
             resetSticks();
@@ -168,7 +183,7 @@
 
         function startTransmissionLoop() {
             transmissionIntervalId = setInterval(async () => {
-                if (!isConnected || !txCharacteristic) return;
+                if (!isConnected || !writer) return; // 🛠️ 確保寫入器是 Ready 的
                 const tByte = Math.min(250, Math.max(0, Math.round((channels.throttle - 1000) / 4)));
                 const yByte = Math.min(250, Math.max(0, Math.round((channels.yaw - 1000) / 4)));
                 const pByte = Math.min(250, Math.max(0, Math.round((channels.pitch - 1000) / 4)));
@@ -177,10 +192,8 @@
                 const checksum = (0xFE ^ tByte ^ yByte ^ pByte ^ rByte ^ statusByte) & 0xFF;
                 const buffer = new Uint8Array([0xFE, tByte, yByte, pByte, rByte, statusByte, checksum]);
                 try { 
-                    // 🛠️ 【相容性回退機制】先嘗試標準發射，若受阻自動切換為雙向安全應答模式
-                    await txCharacteristic.writeValueWithoutResponse(buffer).catch(async () => {
-                        await txCharacteristic.writeValue(buffer);
-                    }); 
+                    // 🛠️ 4. 拋棄藍牙特性值，改用 Serial 管道以 115200 鮑率狂暴發射 7 位元組封包！
+                    await writer.write(buffer); 
                 } catch (e) { console.error("數據鏈路中斷:", e); }
             }, 50); 
         }
