@@ -79,17 +79,14 @@
         const UUID_SERVICE = "0000ffe0-0000-1000-8000-00805f9b34fb";
         const UUID_CHARACTERISTIC = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
-        connectBtn.addEventListener('click', async () => {
+       connectBtn.addEventListener('click', async () => {
             if (isConnected) { disconnectBluetooth(); return; }
             try {
-                // 🛠️ 【程式修正】改用動態過濾器，強制瀏覽器跳出原生搜尋視窗
+                // 🛠️ 【終極微創手術】廢除在 filters 內組合 services 與 name 的死鎖限制
+                // 改用 acceptAllDevices 徹底打開權限，強迫瀏覽器無條件彈出搜尋清單！
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    filters: [
-                        { services: [UUID_SERVICE] },
-                        { namePrefix: 'HC' },
-                        { namePrefix: 'Zen' }
-                    ],
-                    optionalServices: [UUID_SERVICE]
+                    acceptAllDevices: true,
+                    optionalServices: [UUID_SERVICE] // 必須在這裡宣告 FFE0，否則後續會無法獲取服務
                 });
                 
                 console.log("硬體握手成功，正在建立 GATT 隧道...");
@@ -101,7 +98,7 @@
                 armBtn.disabled = false; armBtn.textContent = "解鎖馬達 (ARM)"; armBtn.classList.add('ready');
                 startTransmissionLoop();
             } catch (error) { 
-                // 🛠️ 【錯誤 Usability 優化】讓程式自己把底層的真實錯誤代碼吐在主畫面上，不瞎猜！
+                // 🛠️ 錯誤優化：萬一還是進到 catch，它會把瀏覽器拒絕的真實原因直接彈出來
                 console.error(error);
                 alert("瀏覽器核心回報錯誤: " + error.message + "\n\n請確認手機藍牙已開啟、未被其他 App 佔用，且使用 Google Chrome 瀏覽器！"); 
             }
