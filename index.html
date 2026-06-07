@@ -69,6 +69,18 @@
     </div>
 
 <script>
+        // 💡 攔截點擊事件，強制進入無網址列的全螢幕，並死死鎖定橫向！
+        document.body.addEventListener('click', async () => {
+            try {
+                if (!document.fullscreenElement) {
+                    await document.documentElement.requestFullscreen();
+                    // 強制鎖定為橫螢幕 (Landscape)
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) {
+                console.log("全螢幕或鎖定橫向受阻 (部分 iOS 瀏覽器不支援):", err);
+            }
+        }, { once: true }); // { once: true } 代表只要點擊畫面一次就會觸發，之後不再重複執行
         
     // 🛠️ 1. 在最頂端宣告 Web Serial 專用的全域控制變數
         let serialPort = null;
