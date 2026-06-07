@@ -7,22 +7,19 @@
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
         body { margin: 0; padding: 0; width: 100vw; height: 100vh; background-color: #121212; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; display: flex; flex-direction: column; }
-        header { display: flex; justify-content: space-between; align-items: center; padding: 8px 20px; background: #1e1e1e; border-bottom: 1px solid #333; }
-        .logo { font-size: 10px; font-weight: bold; letter-spacing: 1px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #1e1e1e; border-bottom: 1px solid #333; }
+        .logo { font-size: 18px; font-weight: bold; letter-spacing: 1px; }
         
-        /* 🛠️ 【新功能：全螢幕按鈕樣式】極簡暗色線條風格，融入整體視覺架構 */
-        .btn-fullscreen { background-color: transparent; color: #888; border: 1px solid #444; padding: 6px 18px; border-radius: 20px; font-size: 10px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .btn-fullscreen { background-color: transparent; color: #888; border: 1px solid #444; padding: 10px 18px; border-radius: 20px; font-size: 14px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .btn-fullscreen:active { background-color: #2a2a2a; color: #fff; }
         
-        /* 【Usability 按鈕放大】優化右上角連接按鈕更好點擊 */
-        .btn-connect { background-color: #00adb5; color: white; border: none; padding: 8px 24px; border-radius: 25px; font-size: 10px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .btn-connect { background-color: #00adb5; color: white; border: none; padding: 12px 24px; border-radius: 25px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .btn-connect.connected { background-color: #ff2e63; }
         
         .telemetry { display: flex; justify-content: space-around; background: #181818; padding: 10px 0; font-size: 13px; border-bottom: 1px solid #222; }
         .data-box span { color: #00adb5; font-weight: bold; }
         .control-container { flex: 1; display: flex; justify-content: space-around; align-items: center; padding: 20px; position: relative; }
         
-        /* 【幾何調校】縮小外圍灰色底盤大圓圈 */
         .joystick-zone { 
             width: 120px; height: 120px; 
             background: radial-gradient(circle, #252525 0%, #1a1a1a 100%); 
@@ -30,20 +27,17 @@
             display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); 
         }
 
-        /* 【幾何調校】同步縮小內部負責操控的藍色小球 */
         .stick { 
             width: 40px; height: 40px; 
             background: linear-gradient(145deg, #333333, #222222); 
             border: 2px solid #00adb5; border-radius: 50%; position: absolute; cursor: pointer; 
-            box-shadow: 0 5px 10px rgba(0,0,0,0.4); transition: transform 0.05s linear; 
+            box-shadow: 0 5px 10px rgba(0,0,0,0.4); transition: transform 0.05s linear; pointer-events: none; /* 💡 防止小球搶走大圓圈的觸控焦點 */
         }
         
         .joystick-label { position: absolute; bottom: -25px; font-size: 12px; color: #666; width: max-content; text-align: center; }
 
         footer { padding: 15px; background: #1e1e1e; display: flex; justify-content: center; border-top: 1px solid #333; }
-        
-        /* 【Usability 按鈕放大】底部的馬達解鎖按鈕增厚、寬度加大，達成極致盲操 */
-        .btn-arm { width: 90%; max-width: 400px; background-color: #333; color: #888; border: 2px solid #444; padding: 10px; border-radius: 12px; font-size: 12px; font-weight: bold; letter-spacing: 3px; cursor: pointer; text-align: center; }
+        .btn-arm { width: 90%; max-width: 400px; background-color: #333; color: #888; border: 2px solid #444; padding: 18px; border-radius: 12px; font-size: 20px; font-weight: bold; letter-spacing: 3px; cursor: pointer; text-align: center; }
         .btn-arm.ready { background-color: #ff5722; color: white; border-color: #ff5722; box-shadow: 0 0 10px rgba(255,87,34,0.5); }
         
         #orientation-warning { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #121212; z-index: 9999; justify-content: center; align-items: center; }
@@ -102,41 +96,29 @@
         let bluetoothDevice = null; let txCharacteristic = null; let isConnected = false; let isArmed = false; let transmissionIntervalId = null;
         let channels = { throttle: 1000, yaw: 1500, pitch: 1500, roll: 1500 };
 
-        const fullscreenBtn = document.getElementById('fullscreenBtn'); // 🛠️ 抓取全螢幕按鈕 DOM
+        const fullscreenBtn = document.getElementById('fullscreenBtn'); 
         const connectBtn = document.getElementById('connectBtn'); const armBtn = document.getElementById('armBtn');
         const leftStick = document.getElementById('leftStick'); const rightStick = document.getElementById('rightStick');
 
-        // 🛠️ 【新功能：智慧全螢幕切換邏輯】
         fullscreenBtn.addEventListener('click', async () => {
             try {
                 if (!document.fullscreenElement) {
-                    // 1. 請求進入沉浸式全螢幕（吞掉網址列與狀態列）
                     await document.documentElement.requestFullscreen();
-                    
-                    // 2. 核心手勢：強迫手機作業系統死死鎖定在「橫螢幕模式 (Landscape)」
                     if (screen.orientation && screen.orientation.lock) {
                         await screen.orientation.lock('landscape').catch(e => console.log('旋轉鎖定受阻:', e));
                     }
                     fullscreenBtn.textContent = "Exit 視窗";
                 } else {
-                    // 如果原本是全螢幕，點擊則優雅退出
                     await document.exitFullscreen();
                     fullscreenBtn.textContent = "🖥️ 全螢幕";
                 }
-            } catch (error) {
-                console.error("全螢幕切換失敗:", error);
-                alert("瀏覽器防禦阻擋：請確保您是在實體手機上點擊，或確認瀏覽器支援此功能！");
-            }
+            } catch (error) { console.error(error); }
         });
 
-        // 監聽系統原生退出全螢幕事件（例如使用者按了實體返回鍵），自動同步按鈕文字
         document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
-                fullscreenBtn.textContent = "🖥️ 全螢幕";
-            }
+            if (!document.fullscreenElement) { fullscreenBtn.textContent = "🖥️ 全螢幕"; }
         });
 
-        // 點擊連線：改走 Chrome 官方合法放行的 Web Serial 串口流，完美兼容電腦直連 HC-05
         connectBtn.addEventListener('click', async () => {
             if (isConnected) { disconnectBluetooth(); return; }
             try {
@@ -176,7 +158,7 @@
             else { armBtn.textContent = "解鎖馬達 (ARM)"; armBtn.style.backgroundColor = "#ff5722"; resetSticks(); }
         });
 
-        // 精確對齊 120px 大圓與 40px 小球的幾何觸控探針
+        // 🛠️ 【完全體多點觸控重構】鎖定專屬觸控識別碼，徹底粉碎磁吸效應
         function setupJoystick(zoneId, stickId, isLeftZone) {
             const zone = document.getElementById(zoneId); 
             const stick = document.getElementById(stickId); 
@@ -184,13 +166,37 @@
             const centerX = 40; 
             const centerY = isLeftZone ? 80 : 40; 
             
+            let activeTouchId = null; // 💡 用來死死記住「是哪一根手指」按進了這個大圓圈
+
             stick.style.left = centerX + 'px'; 
             stick.style.top = centerY + 'px';
 
+            function handleStart(e) {
+                e.preventDefault();
+                if (!isConnected) return;
+                // 💡 只有當前沒有鎖定手指時，才抓取剛按下去的那根手指的識別碼 (Identifier)
+                if (activeTouchId === null) {
+                    const touch = e.changedTouches[0];
+                    activeTouchId = touch.identifier;
+                    handleMove(e);
+                }
+            }
+
             function handleMove(e) {
-                e.preventDefault(); if (!isConnected) return;
-                const touch = e.touches[0]; const rect = zone.getBoundingClientRect();
+                e.preventDefault(); 
+                if (!isConnected || activeTouchId === null) return;
                 
+                // 💡 遍歷當前畫面上所有的觸控點，精確找出「屬於這個搖桿」的那根手指
+                let touch = null;
+                for (let i = 0; i < e.touches.length; i++) {
+                    if (e.touches[i].identifier === activeTouchId) {
+                        touch = e.touches[i];
+                        break;
+                    }
+                }
+                if (!touch) return; // 沒找到就跳出，絕對不去誤讀另一隻手！
+
+                const rect = zone.getBoundingClientRect();
                 let deltaX = touch.clientX - rect.left - 60; 
                 let deltaY = touch.clientY - rect.top - 60;  
                 
@@ -214,20 +220,37 @@
                 updateUI();
             }
 
-            function handleEnd() {
-                if (isLeftZone) { 
-                    channels.yaw = 1500; 
-                    stick.style.left = '40px';
-                } else { 
-                    channels.pitch = 1500; channels.roll = 1500; 
-                    stick.style.left = centerX + 'px'; stick.style.top = centerY + 'px'; 
+            function handleEnd(e) {
+                e.preventDefault();
+                if (activeTouchId === null) return;
+                
+                // 💡 檢查離開畫面的手指，是不是綁定的這根專屬手指
+                let touchTriggered = false;
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === activeTouchId) {
+                        touchTriggered = true;
+                        break;
+                    }
                 }
-                updateUI();
+                
+                if (touchTriggered) {
+                    activeTouchId = null; // 釋放手指鎖定
+                    if (isLeftZone) { 
+                        channels.yaw = 1500; 
+                        stick.style.left = '40px';
+                        // 油門死死鎖定在當前放開的高度，防止墜機！
+                    } else { 
+                        channels.pitch = 1500; channels.roll = 1500; 
+                        stick.style.left = centerX + 'px'; stick.style.top = centerY + 'px'; 
+                    }
+                    updateUI();
+                }
             }
             
-            zone.addEventListener('touchstart', handleMove); 
+            zone.addEventListener('touchstart', handleStart); 
             zone.addEventListener('touchmove', handleMove); 
             zone.addEventListener('touchend', handleEnd);
+            zone.addEventListener('touchcancel', handleEnd);
         }
 
         setupJoystick('leftZone', 'leftStick', true); 
