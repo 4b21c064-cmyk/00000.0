@@ -10,7 +10,11 @@
         header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #1e1e1e; border-bottom: 1px solid #333; }
         .logo { font-size: 18px; font-weight: bold; letter-spacing: 1px; }
         
-        /* 🛠️ 【Usability 按鈕放大】優化右上角連接按鈕更好點擊 */
+        /* 🛠️ 【新功能：全螢幕按鈕樣式】極簡暗色線條風格，融入整體視覺架構 */
+        .btn-fullscreen { background-color: transparent; color: #888; border: 1px solid #444; padding: 10px 18px; border-radius: 20px; font-size: 14px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .btn-fullscreen:active { background-color: #2a2a2a; color: #fff; }
+        
+        /* 【Usability 按鈕放大】優化右上角連接按鈕更好點擊 */
         .btn-connect { background-color: #00adb5; color: white; border: none; padding: 12px 24px; border-radius: 25px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
         .btn-connect.connected { background-color: #ff2e63; }
         
@@ -18,7 +22,7 @@
         .data-box span { color: #00adb5; font-weight: bold; }
         .control-container { flex: 1; display: flex; justify-content: space-around; align-items: center; padding: 20px; position: relative; }
         
-        /* 🛠️ 【幾何調校】縮小外圍灰色底盤大圓圈 */
+        /* 【幾何調校】縮小外圍灰色底盤大圓圈 */
         .joystick-zone { 
             width: 120px; height: 120px; 
             background: radial-gradient(circle, #252525 0%, #1a1a1a 100%); 
@@ -26,7 +30,7 @@
             display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); 
         }
 
-        /* 🛠️ 【幾何調校】同步縮小內部負責操控的藍色小球 */
+        /* 【幾何調校】同步縮小內部負責操控的藍色小球 */
         .stick { 
             width: 40px; height: 40px; 
             background: linear-gradient(145deg, #333333, #222222); 
@@ -34,12 +38,11 @@
             box-shadow: 0 5px 10px rgba(0,0,0,0.4); transition: transform 0.05s linear; 
         }
         
-        /* 🛠️ 標籤字體優化，保持版面清爽 */
         .joystick-label { position: absolute; bottom: -25px; font-size: 12px; color: #666; width: max-content; text-align: center; }
 
         footer { padding: 15px; background: #1e1e1e; display: flex; justify-content: center; border-top: 1px solid #333; }
         
-        /* 🛠️ 【Usability 按鈕放大】底部的馬達解鎖按鈕增厚、寬度加大，達成極致盲操 */
+        /* 【Usability 按鈕放大】底部的馬達解鎖按鈕增厚、寬度加大，達成極致盲操 */
         .btn-arm { width: 90%; max-width: 400px; background-color: #333; color: #888; border: 2px solid #444; padding: 18px; border-radius: 12px; font-size: 20px; font-weight: bold; letter-spacing: 3px; cursor: pointer; text-align: center; }
         .btn-arm.ready { background-color: #ff5722; color: white; border-color: #ff5722; box-shadow: 0 0 10px rgba(255,87,34,0.5); }
         
@@ -57,6 +60,7 @@
 </head>
 <body>
     <header>
+        <button id="fullscreenBtn" class="btn-fullscreen">🖥️ 全螢幕</button>
         <div class="logo">小四軸</div>
         <button id="connectBtn" class="btn-connect">連接藍牙</button>
     </header>
@@ -98,10 +102,41 @@
         let bluetoothDevice = null; let txCharacteristic = null; let isConnected = false; let isArmed = false; let transmissionIntervalId = null;
         let channels = { throttle: 1000, yaw: 1500, pitch: 1500, roll: 1500 };
 
+        const fullscreenBtn = document.getElementById('fullscreenBtn'); // 🛠️ 抓取全螢幕按鈕 DOM
         const connectBtn = document.getElementById('connectBtn'); const armBtn = document.getElementById('armBtn');
         const leftStick = document.getElementById('leftStick'); const rightStick = document.getElementById('rightStick');
 
-        // 🛠️ 點擊連線：改走 Chrome 官方合法放行的 Web Serial 串口流，完美兼容電腦直連 HC-05
+        // 🛠️ 【新功能：智慧全螢幕切換邏輯】
+        fullscreenBtn.addEventListener('click', async () => {
+            try {
+                if (!document.fullscreenElement) {
+                    // 1. 請求進入沉浸式全螢幕（吞掉網址列與狀態列）
+                    await document.documentElement.requestFullscreen();
+                    
+                    // 2. 核心手勢：強迫手機作業系統死死鎖定在「橫螢幕模式 (Landscape)」
+                    if (screen.orientation && screen.orientation.lock) {
+                        await screen.orientation.lock('landscape').catch(e => console.log('旋轉鎖定受阻:', e));
+                    }
+                    fullscreenBtn.textContent = "Exit 視窗";
+                } else {
+                    // 如果原本是全螢幕，點擊則優雅退出
+                    await document.exitFullscreen();
+                    fullscreenBtn.textContent = "🖥️ 全螢幕";
+                }
+            } catch (error) {
+                console.error("全螢幕切換失敗:", error);
+                alert("瀏覽器防禦阻擋：請確保您是在實體手機上點擊，或確認瀏覽器支援此功能！");
+            }
+        });
+
+        // 監聽系統原生退出全螢幕事件（例如使用者按了實體返回鍵），自動同步按鈕文字
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                fullscreenBtn.textContent = "🖥️ 全螢幕";
+            }
+        });
+
+        // 點擊連線：改走 Chrome 官方合法放行的 Web Serial 串口流，完美兼容電腦直連 HC-05
         connectBtn.addEventListener('click', async () => {
             if (isConnected) { disconnectBluetooth(); return; }
             try {
@@ -141,13 +176,13 @@
             else { armBtn.textContent = "解鎖馬達 (ARM)"; armBtn.style.backgroundColor = "#ff5722"; resetSticks(); }
         });
 
-        // 🛠️ 【完全重構】精確對齊 120px 大圓與 40px 小球的幾何觸控探針
+        // 精確對齊 120px 大圓與 40px 小球的幾何觸控探針
         function setupJoystick(zoneId, stickId, isLeftZone) {
             const zone = document.getElementById(zoneId); 
             const stick = document.getElementById(stickId); 
-            const maxRadius = 40;     // 最大移動行程 40px
+            const maxRadius = 40;     
             const centerX = 40; 
-            const centerY = isLeftZone ? 80 : 40; // 左手油門預設在最底部 80px
+            const centerY = isLeftZone ? 80 : 40; 
             
             stick.style.left = centerX + 'px'; 
             stick.style.top = centerY + 'px';
@@ -156,7 +191,6 @@
                 e.preventDefault(); if (!isConnected) return;
                 const touch = e.touches[0]; const rect = zone.getBoundingClientRect();
                 
-                // 扣除新大圓半徑 60px，獲取絕對精確的圓心相對位移
                 let deltaX = touch.clientX - rect.left - 60; 
                 let deltaY = touch.clientY - rect.top - 60;  
                 
@@ -184,7 +218,6 @@
                 if (isLeftZone) { 
                     channels.yaw = 1500; 
                     stick.style.left = '40px';
-                    // 💡 放開左手大拇指時，油門死死鎖定在當前高度，只把航向歸中，防止墜機！
                 } else { 
                     channels.pitch = 1500; channels.roll = 1500; 
                     stick.style.left = centerX + 'px'; stick.style.top = centerY + 'px'; 
