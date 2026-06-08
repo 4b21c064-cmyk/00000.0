@@ -95,7 +95,7 @@
         let writer = null;
         let isConnected = false; let isArmed = false; let transmissionIntervalId = null;
         
-        // 🛠️ 數據結構 100% 精準對齊 MultiWii 官方 8 通道微秒脈衝規範
+        // 🛠️ 100% 精準對齊 MWC 官方 1000~2000 標準微秒脈衝
         let channels = { roll: 1500, pitch: 1500, yaw: 1500, throttle: 1000, aux1: 1000, aux2: 1000, aux3: 1000, aux4: 1000 };
 
         const fullscreenBtn = document.getElementById('fullscreenBtn'); 
@@ -157,11 +157,11 @@
             if (isArmed) { 
                 armBtn.textContent = "❗ 鎖定馬達 (DISARM)"; 
                 armBtn.style.backgroundColor = "#ff2e63"; 
-                channels.aux1 = 2000; // 🛠️ 點擊 ARM 時，將 AUX1 通道拉高到 2000 微秒，完美撞進妳滑鼠勾選的 HIGH 格子！
+                channels.aux1 = 2000; // 🛠️ ARM 時將 AUX1 飆高到 2000
             } else { 
                 armBtn.textContent = "解鎖馬達 (ARM)"; 
                 armBtn.style.backgroundColor = "#ff5722"; 
-                channels.aux1 = 1000; // 歸零為 1000 觸發 DISARM
+                channels.aux1 = 1000; 
                 resetSticks(); 
             }
         });
@@ -273,16 +273,16 @@
             document.getElementById('valR').textContent = channels.roll;
         }
 
-        // 🛠️ 【終極打通】每 70ms 噴射一發標準的官方 MultiWii Serial Protocol (MSP_SET_RAW_RC) 串流
+        // 🛠️ 【數據格式徹底解鎖】發射標準 8 通道 16位元雙位元組 MWC 官方 MSP 串流
         function startTransmissionLoop() {
             transmissionIntervalId = setInterval(async () => {
                 if (!isConnected || !writer) return; 
                 
-                const mspId = 200; // MSP_SET_RAW_RC 官方指令暗號
-                const dataSize = 16; // 8 通道 * 2 位元組 = 16 碼
+                const mspId = 200; 
+                const dataSize = 16; 
                 const payload = new Uint8Array(dataSize);
                 
-                // 🛠️ 100% 嚴格對齊 MWC 官方底層通道枚舉順序：ROLL, PITCH, YAW, THROTTLE, AUX1...
+                // 100% 精確對齊 types.h 的 ROLL, PITCH, YAW, THROTTLE 記憶體矩陣
                 payload[0]  = channels.roll & 0xFF;        payload[1]  = (channels.roll >> 8) & 0xFF;
                 payload[2]  = channels.pitch & 0xFF;       payload[3]  = (channels.pitch >> 8) & 0xFF;
                 payload[4]  = channels.yaw & 0xFF;         payload[5]  = (channels.yaw >> 8) & 0xFF;
@@ -292,11 +292,9 @@
                 payload[12] = channels.aux3 & 0xFF;        payload[13] = (channels.aux3 >> 8) & 0xFF;
                 payload[14] = channels.aux4 & 0xFF;        payload[15] = (channels.aux4 >> 8) & 0xFF;
                 
-                // 🧮 計算 MultiWii 專屬官方 MSP 校驗碼 (XOR 互斥或大對齊)
                 let checksum = dataSize ^ mspId;
                 for (let i = 0; i < dataSize; i++) { checksum ^= payload[i]; }
                 
-                // 筆直組裝成標準官方格式：$M< + 長度 + 指令碼 + 載荷 + 校驗碼
                 const buffer = new Uint8Array(6 + dataSize);
                 buffer[0] = 0x24; // '$'
                 buffer[1] = 0x4D; // 'M'
@@ -310,7 +308,7 @@
                 try { 
                     await writer.write(buffer); 
                 } catch (e) { console.error("數據鏈路中斷:", e); }
-            }, 70); // 💡 改為 70ms，既不爆緩衝，又完美卡死 rcSerialCount 倒數！
+            }, 70); // 💡 保持 70ms 黃金心跳頻率
         }
     </script>
 </body>
