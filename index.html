@@ -95,10 +95,9 @@
         let writer = null;
         let isConnected = false; let isArmed = false; let transmissionIntervalId = null;
         
-        // 🛠️ 數據通道完美對齊 MultiWii 官方定義的標準 1000~2000 區間
         let channels = { roll: 1500, pitch: 1500, yaw: 1500, throttle: 1000, aux1: 1000, aux2: 1000, aux3: 1000, aux4: 1000 };
 
-        const fullscreenBtn = document.getElementById('fullscreenBtn'); 
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
         const connectBtn = document.getElementById('connectBtn'); const armBtn = document.getElementById('armBtn');
         const leftStick = document.getElementById('leftStick'); const rightStick = document.getElementById('rightStick');
 
@@ -157,7 +156,7 @@
             if (isArmed) { 
                 armBtn.textContent = "❗ 鎖定馬達 (DISARM)"; 
                 armBtn.style.backgroundColor = "#ff2e63"; 
-                channels.aux1 = 2000; // 🛠️ ARM 時，無條件將 AUX1 通道拉高到 2000 觸發官方特赦格點！
+                channels.aux1 = 2000; 
             } else { 
                 armBtn.textContent = "解鎖馬達 (ARM)"; 
                 armBtn.style.backgroundColor = "#ff5722"; 
@@ -272,15 +271,14 @@
         }
 
         function updateUI() {
-            // 💡 讓網頁上方的油門%數顯示，也同步遵從我們的 1120 靜止法律！
-            let dispThrottle = channels.throttle < 1120 ? 1000 : channels.throttle;
+            // 💡 讓網頁上方的油門%數顯示，也同步追隨我們的 1150 靜止法律！
+            let dispThrottle = channels.throttle < 1150 ? 1000 : channels.throttle;
             document.getElementById('valT').textContent = Math.round((dispThrottle - 1000) / 10);
             document.getElementById('valY').textContent = channels.yaw; 
             document.getElementById('valP').textContent = channels.pitch; 
             document.getElementById('valR').textContent = channels.roll;
         }
 
-        // 🛠️ 【數據格式神級對齊】將 1000~2000 的高低雙位元組，依照 types.h 枚舉順序打包噴射出去！
         function startTransmissionLoop() {
             transmissionIntervalId = setInterval(async () => {
                 if (!isConnected || !writer) return; 
@@ -289,20 +287,17 @@
                 const dataSize = 16; 
                 const payload = new Uint8Array(dataSize);
                 
-                // 🛡️ 【首席創客實體層防禦：油門死區洗滌】
-                // 讀取目前搖桿的實體油門數據。如果小於 1120μs（代表手指剛碰到螢幕或在底部晃蕩產生的微小偏置）
-                // 我們就在發射的最前線，無條件將它洗成絕對純淨的 1000，完美觸發飛控的 MOTOR_STOP 絕對靜止法律！
+                // 🛡️ 【首席創客實體層防禦：油門死區洗滌】加固到 1150μs
                 let cleanThrottle = channels.throttle;
-                if (cleanThrottle < 1120) {
+                if (cleanThrottle < 1150) {
                     cleanThrottle = 1000;
                 }
                 
-                // 🛠️ 100% 精確對齊 MWC 官方底層通道枚舉順序：ROLL, PITCH, YAW, THROTTLE...
                 payload[0]  = channels.roll & 0xFF;        payload[1]  = (channels.roll >> 8) & 0xFF;
                 payload[2]  = channels.pitch & 0xFF;       payload[3]  = (channels.pitch >> 8) & 0xFF;
                 payload[4]  = channels.yaw & 0xFF;         payload[5]  = (channels.yaw >> 8) & 0xFF;
                 
-                // 🚀 數據完美閉環：將清洗乾淨、絕不漏電的 cleanThrottle 打包送進發射槽！
+                // 🚀 將清洗完畢、絕對不漏電的 cleanThrottle 送出
                 payload[6]  = cleanThrottle & 0xFF;        payload[7]  = (cleanThrottle >> 8) & 0xFF;
                 
                 payload[8]  = channels.aux1 & 0xFF;        payload[9]  = (channels.aux1 >> 8) & 0xFF;
@@ -326,7 +321,7 @@
                 try { 
                     await writer.write(buffer); 
                 } catch (e) { console.error("中斷:", e); }
-            }, 70); // 💡 70ms 黃金心跳發射頻率
+            }, 70); 
         }
     </script>
 </body>
