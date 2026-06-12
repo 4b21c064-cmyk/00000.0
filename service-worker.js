@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zenflight-v1';
+const CACHE_NAME = 'zenflight-v2';
 const ASSETS = [
   'index.html',
   'manifest.json'
