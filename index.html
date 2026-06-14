@@ -86,7 +86,7 @@
         <div style="text-align: center; padding: 20px;">
             <span style="font-size: 50px;">🔄</span>
             <h2 style="margin-top: 15px; font-size: 18px;">請將手機旋轉至【橫螢幕模式】</h2>
-            <p style="color: #888; font-size: 13px; margin-top: 5px;">為了精準盲操戰機，請解鎖手機自動旋轉並打橫使用</p>
+           
         </div>
     </div>
 
@@ -212,9 +212,10 @@
                     stick.style.top = (40 + deltaY) + 'px'; 
                     
                     channels.yaw = Math.round(1500 + (deltaX / maxRadius) * 500);
-                    // 🛠️ 重新校正觸控幾何：消除 Y 軸初始化圓心偏移產生的 50% 彈跳公差，完美對齊實體遙控器全幅線性軌跡
-                    channels.throttle = Math.round(1500 - (deltaY / maxRadius) * 500);
-                    channels.throttle = Math.max(1000, Math.min(2000, channels.throttle));
+                    
+                    // 🛠️ 【第一重防禦】計算出實體油門後，只要小於 1150μs 死區，直接在觸控記憶體內洗成 1000！
+                    let rawThrottle = Math.round(1500 - (deltaY / maxRadius) * 500);
+                    channels.throttle = rawThrottle < 1150 ? 1000 : Math.min(2000, rawThrottle);
                 } else { 
                     stick.style.left = (centerX + deltaX) + 'px'; 
                     stick.style.top = (centerY + deltaY) + 'px'; 
@@ -241,10 +242,9 @@
                     activeTouchId = null; 
                     if (isLeftZone) { 
                         channels.yaw = 1500; 
-                        // 🛠️ 摔機安全防禦：左手手指一離開，遙控器搖桿立刻垂直砸回最底部（Left 40, Top 80）
                         stick.style.left = '40px';
                         stick.style.top = '80px';
-                        // 🛠️ 數據大清洗：油門直接物理洗成絕對 1000 完全斷電！
+                        // 🛠️ 【第二重防禦】手指離開瞬間，將變數死死扣回 1000 完全斷電狀態！
                         channels.throttle = 1000;
                     } else { 
                         channels.pitch = 1500; channels.roll = 1500; 
@@ -271,7 +271,7 @@
         }
 
         function updateUI() {
-            // 💡 讓網頁上方的油門%數顯示，也同步追隨我們的 1150 靜止法律！
+            // 🛠️ 【UI對齊】百分比隨同 1150 法律，只要在死區內，視覺介面死死顯示 0%
             let dispThrottle = channels.throttle < 1150 ? 1000 : channels.throttle;
             document.getElementById('valT').textContent = Math.round((dispThrottle - 1000) / 10);
             document.getElementById('valY').textContent = channels.yaw; 
@@ -287,7 +287,8 @@
                 const dataSize = 16; 
                 const payload = new Uint8Array(dataSize);
                 
-                // 🛡️ 【首席創客實體層防禦：油門死區洗滌】加固到 1150μs
+                // 🛠️ 【第三重核心斷電防禦】發射最前線總把關：
+                // 只要實體油門變數小於 1150μs，噴射出去的藍牙數據絕對是純淨、冰冷的 1000 斷電信號！
                 let cleanThrottle = channels.throttle;
                 if (cleanThrottle < 1150) {
                     cleanThrottle = 1000;
@@ -297,7 +298,7 @@
                 payload[2]  = channels.pitch & 0xFF;       payload[3]  = (channels.pitch >> 8) & 0xFF;
                 payload[4]  = channels.yaw & 0xFF;         payload[5]  = (channels.yaw >> 8) & 0xFF;
                 
-                // 🚀 將清洗完畢、絕對不漏電的 cleanThrottle 送出
+                // 🚀 送出徹底洗滌後的安全油門數據
                 payload[6]  = cleanThrottle & 0xFF;        payload[7]  = (cleanThrottle >> 8) & 0xFF;
                 
                 payload[8]  = channels.aux1 & 0xFF;        payload[9]  = (channels.aux1 >> 8) & 0xFF;

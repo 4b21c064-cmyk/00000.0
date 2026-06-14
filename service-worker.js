@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zenflight-v2';
+const CACHE_NAME = 'zenflight-v4'; // 🛠️ 滿血迭代升級至 v4 法規！
 const ASSETS = [
   'index.html',
   'manifest.json'
